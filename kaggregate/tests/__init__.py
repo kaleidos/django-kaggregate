@@ -1,5 +1,5 @@
 import unittest
-from .. import QSAggregator
+from ..aggregators import QSAggregator
 from ..models import KAggregate
 from .models import TestModel
 
