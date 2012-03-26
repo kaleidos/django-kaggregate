@@ -4,16 +4,43 @@ from .models import *
 class AggregationKeyAlreadyExists(Exception):
     pass
 
-class QSAggregator():
+class Aggregator:
+    def add_aggregation(self, key, *args, **kwargs):
+        raise NotImplementedError
+
+    def run(self):
+        raise NotImplementedError
+
+
+class QSAggregatorFunc(Aggregator):
     qs = None
     funcs = {}
 
     def __init__(self, qs, **kwargs):
         self.qs = qs
-        for key in kwargs.keys():
-            self.keys.append(str(key))
-            self.map_funcs.append(kwargs[key][0])
-            self.reduce_funcs.append(kwargs[key][1])
+
+    def add_aggregation(self, key, agg_obj):
+        if key in self.funcs.keys():
+            raise AggregationKeyAlreadyExists()
+        else:
+            self.funcs[key] = agg_obj
+
+    def run(self):
+        for item in self.qs.aggregate(**self.funcs).iteritems():
+            try:
+                agg = KAggregate.objects.get(key=item[0])
+            except KAggregate.DoesNotExist:
+                agg = KAggregate(key=item[0])
+            agg.value = item[1]
+            agg.save()
+        
+
+class QSAggregator(Aggregator):
+    qs = None
+    funcs = {}
+
+    def __init__(self, qs, **kwargs):
+        self.qs = qs
 
     def add_aggregation(self, key, reduce_func, map_func=None, final_func=None):
         if key in self.funcs.keys():
