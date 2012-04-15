@@ -35,18 +35,18 @@ Create a module that register your aggregators. For example::
 From the views, you can accest to generated aggregate data::
 
     from django.views.generic import View
-    import kaaggregate
+    import kaggregate
 
     class MyView(View):
         def get(self, request):
-            total_elements = kaaggregate.get_aggregate_value("foo-sum", None)
+            total_elements = kaggregate.get_aggregate_value("foo-sum", None)
             [...]
  
 To generate the aggregated data, you need put some configuration to your settings.py and execute one command.
 The first step, add ``KAGGREGATE_INITIALIZATION_MODULES`` variable with list of modules on which have defined
 your aggregates. Example::
 
-    KAGGREGATE_INITIALIZATION_MODULES = [ 'myapp.myaggregates' ]
+    KAGGREGATE_INITIALIZATION_MODULES = ['myapp.myaggregates']
 
 The second and the final step, yo need generate aggregates. For this, run this command::
   
