@@ -51,3 +51,7 @@ your aggregates. Example::
 The second and the final step, yo need generate aggregates. For this, run this command::
   
     python manage.py gen_aggregates
+
+Additionally, you can specify the backend to store the data stored. This is done with the 
+variable ``KAGGREGATE_STORAGE_BACKEND``. This by defaults is set to ``kaggregate.backends.model.StorageBackend``.
+Currently only available this backend.
