@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
+from collections import defaultdict
 import uuid
 import types
+
+from .backends import get_storage_backend
 
 class MetaAggregator(type):
     def __new__(cls, name, bases, attrs):
@@ -72,38 +75,43 @@ class BaseAggregator(object):
         return self._get_methods("django-aggregate")
 
     def run(self, prefix=""):
-        map_reduce_methods, results = {}, {}
+        mr_methods, results = {}, {}
 
         for key, method in self.map_reduce_methods():
-            map_reduce_methods[key] = {}
-
             if "reduce" not in method:
                 continue
 
-            map_reduce_methods[key]['reduce'] = method['reduce']
-            map_reduce_methods[key]['map'] = lambda x: x \
-                if "map" not in method else method['map']
-            map_reduce_methods[key]['final'] lambda qs, x: x\
-                if "final" not in method else method['final']
+            mr_methods[key] = {'reduce': method['reduce']}
+            if "map" not in method:
+                mr_methods[key]['map'] = lambda x: x
+            else:
+                mr_methods[key]['map'] = method["map"]
+
+            if "final" not in method:
+                mr_methods[key]['final'] = lambda objects, x: x
+            else:
+                mr_methods[key]['final'] = method['final']
 
             results[key] = 0
-
+        
         # make all map reduce registred operations
-        first = True
+        first = defaultdict(lambda: True)
+
         for obj in self.objects():
-            for key, method in map_reduce_methods.iteritems():
-                if first:
-                    results[key], first = method['map'](obj), False
+            for key, method in mr_methods.items():
+                if first[key]:
+                    results[key], first[key] = method['map'](obj), False
                     continue
                 
                 results[key] = method['reduce'](results[key], method['map'](obj))
         
-        # make all final functions registred
-        for key, method in map_reduce_methods.iteritems():
-            results[key] = method['final'](self.objects(), results[key])
-
-        # TODO: save results
-
+        storage = get_storage_backend()
+        
+        # make all final functions registred and save results
+        for key, method in mr_methods.iteritems():
+            result = method['final'](self.objects(), results[key])
+            storage.save(prefix + key, result)
+        
 
 class BaseModelAggregator(BaseAggregator):
     """
