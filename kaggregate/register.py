@@ -7,4 +7,9 @@ class Register(object):
     aggregators = {}
 
     def add(self, aggregator, prefix=""):
-        self.aggregators[aggregators.uuid] = (aggregator, prefix)
+        self.aggregators[aggregator.uuid] = (aggregator, prefix)
+
+register = Register()
+add = register.add
+
+__all__ = ['add', 'register']

@@ -6,7 +6,7 @@ import kaggregate
 
 setup(
     name = 'django-kaggregate',
-    version = ":versiontools:kaggregate:",
+    version = ":versiontools:version:",
     description = "Generic aggregated data generation and store",
     long_description = "",
     keywords = 'django, model',

@@ -74,26 +74,31 @@ class BaseAggregator(object):
 
         return self._get_methods("django-aggregate")
 
-    def run(self, prefix=""):
-        mr_methods, results = {}, {}
+    def _process_methods(self, _callable):
+        methods, results = {}, {}
 
-        for key, method in self.map_reduce_methods():
+        for key, method in _callable():
             if "reduce" not in method:
                 continue
 
-            mr_methods[key] = {'reduce': method['reduce']}
+            methods[key] = {'reduce': method['reduce']}
             if "map" not in method:
-                mr_methods[key]['map'] = lambda x: x
+                methods[key]['map'] = lambda x: x
             else:
-                mr_methods[key]['map'] = method["map"]
+                methods[key]['map'] = method["map"]
 
             if "final" not in method:
-                mr_methods[key]['final'] = lambda objects, x: x
+                methods[key]['final'] = lambda objects, x: x
             else:
-                mr_methods[key]['final'] = method['final']
+                methods[key]['final'] = method['final']
 
             results[key] = 0
-        
+
+        return methods, results
+
+    def run(self, prefix=""):
+        mr_methods, results = self._process_methods(self.map_reduce_methods)
+
         # make all map reduce registred operations
         first = defaultdict(lambda: True)
 
@@ -143,3 +148,12 @@ class BaseModelAggregator(BaseAggregator):
         on a subclass for custom querysets.
         """
         return self.manager.all()
+
+    def run(self, prefix=""):
+        super(BaseModelAggregator, self).run(prefix)
+        
+        dj_aggregators = self.django_aggregators_methods()
+        storage = get_storage_backend()
+        
+        for key, value in self.queryset().aggregate(**dict(dj_aggregators)).iteritems():
+            storage.save(prefix + key, value)
