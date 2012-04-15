@@ -2,11 +2,10 @@
 # -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
-import kaggregate
 
 setup(
     name = 'django-kaggregate',
-    version = ":versiontools:kaggregate:",
+    version = ":versiontools:version:",
     description = "Generic aggregated data generation and store",
     long_description = "",
     keywords = 'django, model',
@@ -16,9 +15,6 @@ setup(
     license = 'BSD',
     include_package_data = True,
     packages = find_packages(),
-    install_requires=[
-        'distribute',
-    ],
     setup_requires = [
         'versiontools >= 1.8',
     ],

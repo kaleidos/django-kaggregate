@@ -8,39 +8,50 @@ Usage
 
 Create a module that register your aggregators. For example::
 
-  from kaggregate.register import Register
-  from kaggregate.aggregators import QSAggregator
-  from myapp.models import MyModel
-  from django.db.models import Count, Avg, Sum
+    import kaggregate
+    from myapp.moels import TestModel
+
+    from django.db.models import Avg
+
+    class ModelAggregator(kaggregate.BaseModelAggregator):
+        @kaggregate.as_django_aggregator(key="average")
+        def averate(self):
+            return Avg("num")
+
+        @kaggregate.as_map_reduce(key="sum")
+        def sum(self):
+            return {
+                'map': lambda x: x.num,
+                'reduce': lambda x, y: x+y,
+            }
+
+    # register aggregator
+    kaggregate.register.add(
+        aggregator = ModelAggregator(TestModel),
+        prefix = "foo-",
+    )
+
+
+From the views, you can accest to generated aggregate data::
+
+    from django.views.generic import View
+    import kaaggregate
+
+    class MyView(View):
+        def get(self, request):
+            total_elements = kaaggregate.get_aggregate_value("foo-sum", None)
+            [...]
+ 
+To generate the aggregated data, you need put some configuration to your settings.py and execute one command.
+The first step, add ``KAGGREGATE_INITIALIZATION_MODULES`` variable with list of modules on which have defined
+your aggregates. Example::
+
+    KAGGREGATE_INITIALIZATION_MODULES = [ 'myapp.myaggregates' ]
+
+The second and the final step, yo need generate aggregates. For this, run this command::
   
-  register = Register()
-  
-  aggregator = QSAggregator(MyModel.objects.filter(published=True))
-  aggregator.add_aggregation(key="count", map_func=lambda x: 1, reduce_func=lambda x, y: x+y)
-  aggregator.add_aggregation(key="sum", map_func=lambda x: x.id, reduce_func=lambda x, y: x+y)
-  aggregator.add_aggregation(key="avg", map_func=lambda x: x.id, reduce_func=lambda x, y: x+y, final_func=lambda qs, x: x/qs.count())
-  register.add('my-aggregator-1', aggregator)
+    python manage.py gen_aggregates
 
-  aggregator_func = QSAggregatorFunc(MyModel.objects.filter(published=True))
-  aggregator_func.add_aggregation("count_func", Count('id'))
-  aggregator_func.add_aggregation("sum_func", Sum('id'))
-  aggregator_func.add_aggregation("avg_func", Avg('id'))
-  register.add('my-aggregator-2', aggregator_func)
-
-Configure your settings.py and add the list of modules that you want to import to register the aggregators. For example::
-
-  KAGGREGATE_INITIALIZATION_MODULES = [ 'myapp.myaggregates' ]
-
-Then you can run the manager gen_aggregates to generate and store all the aggregated data.::
-
-  python manage.py gen_aggregates
-
-You can see you actual aggregates with the manager show_aggregates.::
-
-  python manage.py show_aggregates
-
-And you can access to the generated data directly accesing to the kaggregate.models.KAggregate model data. For example::
-
-  from kaggregate.models import KAggregate
-
-  print KAggregate.objects.get(key="avg").value
+Additionally, you can specify the backend to store the data stored. This is done with the 
+variable ``KAGGREGATE_STORAGE_BACKEND``. This by defaults is set to ``kaggregate.backends.model.StorageBackend``.
+Currently only available this backend.
