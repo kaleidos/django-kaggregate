@@ -40,12 +40,8 @@ class BaseAggregator(object):
         """
         raise NotImplementedError
 
-    def map_reduce_methods(self):
-        if "map-reduce" in self._cached_methods:
-            return self._cached_methods["map-reduce"]
-        
+    def _get_methods(self, type_key):
         methods = []
-
         for attr_name in dir(self):
             attr = getattr(self, attr_name)
 
@@ -55,13 +51,58 @@ class BaseAggregator(object):
             if not hasattr(attr, '_kaggregator_mode'):
                 continue
 
-            if attr._kaggregator_mode != 'map-reduce':
+            if attr._kaggregator_mode != type_key:
                 continue
 
-            methods.append(attr)
-
-        self._cached_methods["map-reduce"] = methods
+            methods.append((attr._kaggregator_key, attr()))
         return methods
+
+    def map_reduce_methods(self):
+        """
+        Returns all map reduce methods.
+        """
+
+        return self._get_methods("map-reduce")
+
+    def django_aggregators_methods(self):
+        """
+        Return all django aggregators methods.
+        """
+
+        return self._get_methods("django-aggregate")
+
+    def run(self, prefix=""):
+        map_reduce_methods, results = {}, {}
+
+        for key, method in self.map_reduce_methods():
+            map_reduce_methods[key] = {}
+
+            if "reduce" not in method:
+                continue
+
+            map_reduce_methods[key]['reduce'] = method['reduce']
+            map_reduce_methods[key]['map'] = lambda x: x \
+                if "map" not in method else method['map']
+            map_reduce_methods[key]['final'] lambda qs, x: x\
+                if "final" not in method else method['final']
+
+            results[key] = 0
+
+        # make all map reduce registred operations
+        first = True
+        for obj in self.objects():
+            for key, method in map_reduce_methods.iteritems():
+                if first:
+                    results[key], first = method['map'](obj), False
+                    continue
+                
+                results[key] = method['reduce'](results[key], method['map'](obj))
+        
+        # make all final functions registred
+        for key, method in map_reduce_methods.iteritems():
+            results[key] = method['final'](self.objects(), results[key])
+
+        # TODO: save results
 
 
 class BaseModelAggregator(BaseAggregator):

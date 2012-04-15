@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
 from django.db import models
 
 class KAggregate(models.Model):
-    key = models.SlugField(max_length=50, primary_key=True)
+    key = models.CharField(max_length=200, db_index=True, primary_key=True)
+    last_update = models.DateTimeField(null=True, default=None)
     value = models.FloatField()
